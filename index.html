@@ -1,0 +1,77 @@
+<body style="background-color: #0c0c0c; color: #fff; font-family: Arial, sans-serif;">
+
+<div style="
+  max-width: 900px; 
+  margin: 40px auto; 
+  padding: 30px; 
+  background: rgba(255, 255, 255, 0.05); 
+  backdrop-filter: blur(10px); 
+  border: 1px solid #4af0f8; 
+  border-radius: 20px; 
+  box-shadow: 0 0 20px #4af0f8;
+">
+
+  <h2 style="text-align:center; color:#4af0f8;">TiffyAI Web3 KYC & Agreement</h2>
+
+  <button onclick="connectWallet()" style="
+    width: 100%; 
+    padding: 12px; 
+    background: linear-gradient(90deg, #4af0f8, #9055ff); 
+    border: none; 
+    border-radius: 10px; 
+    color: white; 
+    font-weight: bold; 
+    margin-top: 20px;
+  ">Connect Wallet</button>
+
+  <p id="account" style="margin-top: 10px;"></p>
+  <p>TiffyAI Balance: <span id="balance" style="color:#4af0f8;">--</span></p>
+
+  <h3 style="color:#4af0f8;">Send TiffyAI</h3>
+  <input type="text" id="recipient" placeholder="Recipient Wallet" style="background:#0c0c0c; color:#fff;">
+  <input type="number" id="amount" placeholder="Amount" style="background:#0c0c0c; color:#fff;">
+  <button onclick="sendTokens()" style="
+    background: linear-gradient(90deg, #4af0f8, #9055ff); 
+    color: white; 
+    font-weight: bold;
+    border: none; 
+    border-radius: 10px; 
+    padding: 10px; 
+    margin-top: 10px;
+  ">Send</button>
+
+  <h3 style="color:#4af0f8;">Agreement</h3>
+  <p style="line-height:1.6;">By submitting this form, you agree to not sell or swap your TiffyAI ($TIFFY) tokens for 6–12 months unless staking. Transfers between wallets are allowed. Violations may incur a 100% tax on those tokens.</p>
+  <input type="text" id="name" placeholder="Your Name (Optional)" style="background:#0c0c0c; color:#fff;">
+  <input type="text" id="wallet" placeholder="Your Wallet Address" readonly style="background:#0c0c0c; color:#fff;">
+  <input type="date" id="date" required style="background:#0c0c0c; color:#fff;">
+  <input type="text" id="signature" placeholder="Type your signature here" required style="background:#0c0c0c; color:#fff;">
+
+  <h3 style="color:#4af0f8;">Selfie Capture</h3>
+  <video id="video" autoplay style="border-radius:10px; box-shadow:0 0 10px #4af0f8;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <button onclick="takeSelfie()" style="
+    background: linear-gradient(90deg, #4af0f8, #9055ff); 
+    color: white; 
+    font-weight: bold; 
+    border: none; 
+    border-radius: 10px; 
+    padding: 10px; 
+    margin-top: 10px;
+  ">Take Selfie</button>
+
+  <h3 style="color:#4af0f8;">Upload KYC Documents</h3>
+  <input type="file" id="idFile" accept="image/*,application/pdf" style="background:#0c0c0c; color:#fff;">
+  <input type="file" id="proofFile" accept="image/*,application/pdf" style="background:#0c0c0c; color:#fff;">
+
+  <button onclick="submitForm()" style="
+    background: linear-gradient(90deg, #4af0f8, #9055ff); 
+    color: white; 
+    font-weight: bold; 
+    border: none; 
+    border-radius: 10px; 
+    padding: 14px; 
+    margin-top: 20px;
+  ">Agree & Submit</button>
+
+</div>
