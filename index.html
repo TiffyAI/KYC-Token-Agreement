@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TiffyAI Web3 KYC Agreement</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; padding: 20px; }
+    .container { background: white; padding: 20px; border-radius: 10px; max-width: 900px; margin: auto; }
+    input, textarea, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; }
+    video, canvas { width: 100%; max-height: 300px; margin-top: 10px; }
+    button { background-color: #4CAF50; color: white; font-weight: bold; }
+    h2, h3 { text-align: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>TiffyAI Web3 Agreement & KYC</h2>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <p id="account"></p>
+  <p>TiffyAI Balance: <span id="balance">--</span></p>
+
+  <h3>Send TiffyAI</h3>
+  <input type="text" id="recipient" placeholder="Recipient Wallet">
+  <input type="number" id="amount" placeholder="Amount">
+  <button onclick="sendTokens()">Send</button>
+
+  <h3>Agreement</h3>
+  <p>By submitting this form, you agree to not sell or swap your TiffyAI ($TIFFY) tokens for 6–12 months unless staking. Transfers between wallets are allowed. Violations may incur a 100% tax on those tokens.</p>
+
+  <input type="text" id="name" placeholder="Your Name (Optional)">
+  <input type="text" id="wallet" placeholder="Your Wallet Address" readonly>
+  <input type="date" id="date" required>
+  <input type="text" id="signature" placeholder="Type your signature here" required>
+
+  <h3>Selfie Capture</h3>
+  <video id="video" autoplay></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <button onclick="takeSelfie()">Take Selfie</button>
+
+  <h3>Upload KYC Documents</h3>
+  <input type="file" id="idFile" accept="image/*,application/pdf" required>
+  <input type="file" id="proofFile" accept="image/*,application/pdf" required>
+
+  <button onclick="submitForm()">Agree & Submit</button>
+</div>
+
+<script>
+  const tokenAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+  const tokenABI = [
+    {"constant":true,"inputs":[{"name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+    {"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"}
+  ];
+
+  let web3;
+  let account;
+  let contract;
+  let selfieData = "";
+
+  emailjs.init("YOUR_EMAILJS_USER_ID"); // Replace this with your EmailJS Public Key
+
+  async function connectWallet() {
+    if (window.ethereum) {
+      web3 = new Web3(window.ethereum);
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await web3.eth.getAccounts();
+      account = accounts[0];
+      document.getElementById("account").innerText = "Connected: " + account;
+      document.getElementById("wallet").value = account;
+      contract = new web3.eth.Contract(tokenABI, tokenAddress);
+      updateBalance();
+    } else {
+      alert("Please install MetaMask!");
+    }
+  }
+
+  async function updateBalance() {
+    const balance = await contract.methods.balanceOf(account).call();
+    document.getElementById("balance").innerText = web3.utils.fromWei(balance, "ether");
+  }
+
+  async function sendTokens() {
+    const to = document.getElementById("recipient").value;
+    const amount = document.getElementById("amount").value;
+    const weiAmount = web3.utils.toWei(amount, "ether");
+
+    await contract.methods.transfer(to, weiAmount).send({ from: account });
+    alert("TiffyAI Sent!");
+    updateBalance();
+  }
+
+  async function startCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    document.getElementById('video').srcObject = stream;
+  }
+  startCamera();
+
+  function takeSelfie() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    selfieData = canvas.toDataURL('image/png');
+    alert("Selfie Captured!");
+  }
+
+  function getBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function submitForm() {
+    const name = document.getElementById("name").value;
+    const wallet = document.getElementById("wallet").value;
+    const date = document.getElementById("date").value;
+    const signature = document.getElementById("signature").value;
+
+    const idFile = document.getElementById("idFile").files[0];
+    const proofFile = document.getElementById("proofFile").files[0];
+
+    const idBase64 = await getBase64(idFile);
+    const proofBase64 = await getBase64(proofFile);
+
+    emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+      name: name,
+      wallet: wallet,
+      date: date,
+      signature: signature,
+      selfie: selfieData,
+      id_file: idBase64,
+      proof_file: proofBase64
+    }).then(() => {
+      alert("KYC & Agreement Submitted!");
+    }, (err) => {
+      console.error(err);
+      alert("Failed to send. Try again.");
+    });
+  }
+</script>
+</body>
+</html>
