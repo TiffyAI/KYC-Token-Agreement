@@ -93,9 +93,6 @@ window.addEventListener("load", async () => {
     }
   }
 
-  // Make it available globally so the KYC HTML can call it
-  window.getTiffyPriceUSD = getTiffyPriceUSD;
-
   async function updateBalanceAndPrice() {
     try {
       const accounts = await web3.eth.getAccounts();
@@ -113,7 +110,7 @@ window.addEventListener("load", async () => {
 
       const priceUSD = await getTiffyPriceUSD();
       const usdValue = (parseFloat(balance) * priceUSD).toFixed(2);
-      document.getElementById("usdValue").textContent = `($${usdValue} USD)`;
+      document.getElementById("usdValue").textContent = `${usdValue} USD`;
     } catch (err) {
       console.error("Balance/Price update error:", err);
       document.getElementById("balance").textContent = "--";
