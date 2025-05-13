@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Queen TiffyAI Frontend with KYC</title>
+  <!-- Include necessary styles and scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+  <style>
+    /* Your existing CSS styles */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TiffyAI Mainnet Market Value</h1>
+    <!-- Wallet Section -->
+    <div id="wallet-section">
+      <button id="connectButton">Connect Wallet</button>
+      <div id="walletStatus"></div>
+    </div>
+    <!-- Balance Section -->
+    <div id="balanceSection" class="hidden">
+      <p><span id="balance">--</span> TIFFY</p>
+      <p><span id="usdValue">Loading...</span></p>
+    </div>
+    <!-- Action Section -->
+    <div id="actionSection" class="hidden">
+      <button id="startAI">Activate AI Trader</button>
+      <button id="stopAI">Stop AI Trader</button>
+    </div>
+    <!-- Manual Trade Section -->
+    <div id="manualSection" class="hidden">
+      <h3>Manual Trading</h3>
+      <button id="manualBuy">Manual Buy</button>
+      <button id="manualSell">Manual Sell</button>
+    </div>
+    <!-- Transaction Log -->
+    <div id="logSection" class="hidden">
+      <h3>Trade Log</h3>
+      <pre id="tradeLog">Waiting for trades...</pre>
+    </div>
+    <!-- KYC Section -->
+    <div id="kycSection">
+      <h2>TiffyAI Web3 KYC & Agreement</h2>
+      <p id="account"></p>
+      <p>TiffyAI Balance: <span id="kycBalance">--</span></p>
+      <h3>Send TiffyAI</h3>
+      <input type="text" id="recipient" placeholder="Recipient Wallet">
+      <input type="number" id="amount" placeholder="Amount">
+      <button onclick="sendTokens()">Send</button>
+      <h3>Agreement</h3>
+      <p>By submitting this form, you agree to not sell or swap your TiffyAI ($TIFFY) tokens for 6–12 months unless staking. Transfers between wallets are allowed. Violations may incur a 100% tax on those tokens.</p>
+      <input type="text" id="name" placeholder="Your Name (Optional)">
+      <input type="text" id="wallet" placeholder="Your Wallet Address" readonly>
+      <input type="date" id="date" required>
+      <input type="text" id="signature" placeholder="Type your signature here" required>
+      <h3>Selfie Capture</h3>
+      <video id="video" autoplay></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+      <button onclick="takeSelfie()">Take Selfie</button>
+      <h3>Upload KYC Documents</h3>
+      <input type="file" id="idFile" accept="image/*,application/pdf" required>
+      <input type="file" id="proofFile" accept="image/*,application/pdf" required>
+      <button onclick="submitForm()">Agree & Submit</button>
+      <h3>Verify Agreement Hash</h3>
+      <textarea id="verifyText" placeholder="Paste name|wallet|date|signature..." rows="3"></textarea>
+      <button onclick="verifyHash()">Generate & Copy SHA-256</button>
+      <p id="verifyResult" style="word-break: break-all; margin-top:10px;"></p>
+    </div>
+  </div>
+  <div id="popup" class="popup hidden"></div>
+  <div id="loading" class="loading hidden">Connecting...</div>
+  <script>
+    const tokenAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+    const tokenABI = [
+      {"constant":true,"inputs":[{"name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+      {"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"type":"function"}
+    ];
+    let web3;
+    let account;
+    let contract;
+    let selfieData = "";
+    emailjs.init("YOUR_EMAILJS_USER_ID"); // Replace with your EmailJS Public Key
+    document.getElementById("connectButton").addEventListener("click", connectWallet);
+    async function connectWallet() {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const accounts = await web3.eth.getAccounts();
+        account = accounts[0];
+        document.getElementById("walletStatus").innerText = "Connected: " + account;
+        document.getElementById("account").innerText = "Connected: " + account;
+        document.getElementById("wallet").value = account;
+        contract = new web3.eth.Contract(tokenABI, tokenAddress);
+        updateBalance();
+      } else {
+        alert("Please install MetaMask!");
+      }
+    }
+    async function updateBalance() {
+      const balance = await contract.methods.balanceOf(account).call();
+      const formattedBalance = web3.utils.fromWei(balance, "ether");
+      document.getElementById("balance").innerText = formattedBalance;
+      document.getElementById("kycBalance").innerText = formattedBalance;
+      document.getElementById("balanceSection").classList.remove("hidden");
+      document.getElementById("actionSection").classList.remove("hidden");
+      document.getElementById("manualSection").classList.remove("hidden");
+      document.getElementById("logSection").classList.remove("hidden");
+    }
+    function takeSelfie() {
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      selfieData = canvas.toDataURL("image/png");
+      alert("Selfie captured!");
+    }
+    function submitForm() {
+      const name = document.getElementById("name").value;
+      const wallet = document.getElementById("wallet").value;
+      const date = document.getElementById("date").value;
+      const signature = document.getElementById("signature").value;
+      const idFile = document.getElementById("idFile").files[0];
+      const proofFile = document.getElementById("proofFile").files[0];
+      if (!wallet || !date || !signature || !idFile || !proofFile || !selfieData) {
+        alert("Please complete all fields and capture a selfie.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("wallet", wallet);
+      formData.append("date", date);
+      formData.append("signature", signature);
+      formData.append("selfie", selfieData);
+      formData.append("idFile", idFile);
+      formData.append("proofFile", proofFile);
+      emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+        name: name,
+        wallet: wallet,
+        date: date,
+        signature: signature,
+        selfie: selfieData
+      }).then((response) => {
+        alert("Form submitted successfully!");
+      }, (error) => {
+        alert("Failed to submit form.");
+      });
+    }
+    function verifyHash() {
+      const input = document.getElementById("verifyText").value.trim();
+      if (!input) {
+        alert("Please enter the data to
+::contentReference[oaicite:41]{index=41}
+ 
