@@ -1,4 +1,9 @@
-if (typeof window.ethereum !== "undefined") {
+window.addEventListener("load", async () => {
+  if (typeof window.ethereum === "undefined") {
+    console.warn("No wallet detected.");
+    return;
+  }
+
   const web3 = new Web3(window.ethereum);
   const pairAddress = "0x9f8ed638f4ddf65e18f3a3222f5275392329d07f";
   const tiffyAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
@@ -88,40 +93,32 @@ if (typeof window.ethereum !== "undefined") {
     }
   }
 
-  // Make it available globally immediately
+  // Make globally available for KYC app
   window.getTiffyPriceUSD = getTiffyPriceUSD;
 
-  // Wallet-specific balance/price updating only after load
-  window.addEventListener("load", async () => {
-    async function updateBalanceAndPrice() {
-      try {
-        const accounts = await web3.eth.getAccounts();
-        if (!accounts.length) {
-          document.getElementById("balance").textContent = "--";
-          document.getElementById("usdValue").textContent = "Unavailable";
-          return;
-        }
+  // Update balance + price if wallet is connected
+  async function updateBalanceAndPrice() {
+    try {
+      const accounts = await web3.eth.getAccounts();
+      if (!accounts.length) return;
 
-        const user = accounts[0];
-        const balanceRaw = await token.methods.balanceOf(user).call();
-        const decimals = await token.methods.decimals().call();
-        const balance = (balanceRaw / 10 ** decimals).toFixed(4);
-        document.getElementById("balance").textContent = balance;
+      const user = accounts[0];
+      const balanceRaw = await token.methods.balanceOf(user).call();
+      const decimals = await token.methods.decimals().call();
+      const balance = (balanceRaw / 10 ** decimals).toFixed(4);
+      document.getElementById("balance").textContent = balance;
 
-        const priceUSD = await getTiffyPriceUSD();
-        const usdValue = (parseFloat(balance) * priceUSD).toFixed(2);
-        document.getElementById("usdValue").textContent = `${usdValue} USD`;
-      } catch (err) {
-        console.error("Balance/Price update error:", err);
-        document.getElementById("balance").textContent = "--";
-        document.getElementById("usdValue").textContent = "Unavailable";
-      }
+      const priceUSD = await getTiffyPriceUSD();
+      const usdValue = (parseFloat(balance) * priceUSD).toFixed(2);
+      document.getElementById("usdValue").textContent = `($${usdValue} USD)`;
+    } catch (err) {
+      console.error("Error updating balance and price:", err);
     }
+  }
 
-    ethereum.on("accountsChanged", updateBalanceAndPrice);
-    ethereum.on("chainChanged", () => location.reload());
+  ethereum.on("accountsChanged", updateBalanceAndPrice);
+  ethereum.on("chainChanged", () => location.reload());
 
-    updateBalanceAndPrice();
-    setInterval(updateBalanceAndPrice, 15000);
-  });
-}
+  updateBalanceAndPrice();
+  setInterval(updateBalanceAndPrice, 15000);
+});
