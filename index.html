@@ -70,68 +70,39 @@
   <button onclick="connectWallet()">Connect Wallet</button>
   <p id="account"></p>
   <div class="neon-text">
-    TiffyAI Balance: <span id="balance">--</span> <span id="usdValue"></span>
+    TiffyAI Balance: <span id="balance">--</span> <span id="usdValue">(USD)</span>
   </div>
+  <h3>Send TiffyAI</h3>
+  <input type="text" id="recipient" placeholder="Recipient Wallet">
+  <input type="number" id="amount" placeholder="Amount">
+  <button onclick="sendTokens()">Send</button>
 </div>
 
 <script>
   const tokenAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
   const pairAddress = "0x9f8ed638f4ddf65e18f3a3222f5275392329d07f";
 
-  const pairABI = [
-    {
-      constant: true,
-      inputs: [],
-      name: "getReserves",
-      outputs: [
-        { internalType: "uint112", name: "_reserve0", type: "uint112" },
-        { internalType: "uint112", name: "_reserve1", type: "uint112" },
-        { internalType: "uint32", name: "_blockTimestampLast", type: "uint32" },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: "token0",
-      outputs: [{ name: "", type: "address" }],
-      type: "function",
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: "token1",
-      outputs: [{ name: "", type: "address" }],
-      type: "function",
-    },
-  ];
-
   const tokenABI = [
-    {
-      constant: true,
-      inputs: [{ name: "_owner", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ name: "balance", type: "uint256" }],
-      type: "function",
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: "decimals",
-      outputs: [{ name: "", type: "uint8" }],
-      type: "function",
-    },
+    { constant: true, inputs: [{ name: "owner", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" },
+    { constant: true, inputs: [], name: "decimals", outputs: [{ name: "", type: "uint8" }], type: "function" },
+    { constant: false, inputs: [{ name: "_to", type: "address" }, { name: "_value", type: "uint256" }], name: "transfer", outputs: [{ name: "", type: "bool" }], type: "function" }
   ];
 
-  let web3;
-  let account;
-  let token;
-  let pair;
+  const pairABI = [
+    { constant: true, inputs: [], name: "getReserves", outputs: [
+      { name: "_reserve0", type: "uint112" },
+      { name: "_reserve1", type: "uint112" },
+      { name: "_blockTimestampLast", type: "uint32" }
+    ], type: "function" },
+    { constant: true, inputs: [], name: "token0", outputs: [{ name: "", type: "address" }], type: "function" },
+    { constant: true, inputs: [], name: "token1", outputs: [{ name: "", type: "address" }], type: "function" }
+  ];
+
+  let web3, account, token, pair;
 
   async function connectWallet() {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask.");
+    if (!window.ethereum) {
+      alert("Please install MetaMask");
       return;
     }
 
@@ -153,7 +124,7 @@
       const data = await res.json();
       return data?.binancecoin?.usd || 0;
     } catch (err) {
-      console.error("Error fetching BNB price:", err);
+      console.error("BNB price error:", err);
       return 0;
     }
   }
@@ -164,21 +135,17 @@
       const token0 = await pair.methods.token0().call();
       const token1 = await pair.methods.token1().call();
 
-      const reserve0 = web3.utils.fromWei(reserves._reserve0.toString());
-      const reserve1 = web3.utils.fromWei(reserves._reserve1.toString());
+      const reserve0 = web3.utils.fromWei(reserves._reserve0);
+      const reserve1 = web3.utils.fromWei(reserves._reserve1);
 
-      let priceInBNB = 0;
-
-      if (token0.toLowerCase() === tokenAddress.toLowerCase()) {
-        priceInBNB = parseFloat(reserve1) / parseFloat(reserve0);
-      } else {
-        priceInBNB = parseFloat(reserve0) / parseFloat(reserve1);
-      }
+      let priceInBNB = token0.toLowerCase() === tokenAddress.toLowerCase()
+        ? parseFloat(reserve1) / parseFloat(reserve0)
+        : parseFloat(reserve0) / parseFloat(reserve1);
 
       const bnbUSD = await getBNBPriceUSD();
       return priceInBNB * bnbUSD;
     } catch (err) {
-      console.error("Error fetching Tiffy price:", err);
+      console.error("Tiffy price error:", err);
       return 0;
     }
   }
@@ -194,10 +161,18 @@
       const usdValue = (parseFloat(balance) * priceUSD).toFixed(2);
       document.getElementById("usdValue").innerText = `($${usdValue} USD)`;
     } catch (err) {
-      console.error("Error updating balance and price:", err);
-      document.getElementById("balance").textContent = "--";
-      document.getElementById("usdValue").textContent = "(USD unavailable)";
+      console.error("Update error:", err);
+      document.getElementById("usdValue").innerText = "(USD unavailable)";
     }
+  }
+
+  async function sendTokens() {
+    const to = document.getElementById("recipient").value;
+    const amount = document.getElementById("amount").value;
+    const weiAmount = web3.utils.toWei(amount, "ether");
+    await token.methods.transfer(to, weiAmount).send({ from: account });
+    alert("TiffyAI Sent!");
+    updateBalanceAndPrice();
   }
 </script>
 </body>
