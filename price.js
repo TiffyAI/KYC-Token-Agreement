@@ -93,14 +93,17 @@ window.addEventListener("load", async () => {
     }
   }
 
-  // Make globally available for KYC app
+  // Make it available globally so the KYC HTML can call it
   window.getTiffyPriceUSD = getTiffyPriceUSD;
 
-  // Update balance + price if wallet is connected
   async function updateBalanceAndPrice() {
     try {
       const accounts = await web3.eth.getAccounts();
-      if (!accounts.length) return;
+      if (!accounts.length) {
+        document.getElementById("balance").textContent = "--";
+        document.getElementById("usdValue").textContent = "Unavailable";
+        return;
+      }
 
       const user = accounts[0];
       const balanceRaw = await token.methods.balanceOf(user).call();
@@ -112,7 +115,9 @@ window.addEventListener("load", async () => {
       const usdValue = (parseFloat(balance) * priceUSD).toFixed(2);
       document.getElementById("usdValue").textContent = `($${usdValue} USD)`;
     } catch (err) {
-      console.error("Error updating balance and price:", err);
+      console.error("Balance/Price update error:", err);
+      document.getElementById("balance").textContent = "--";
+      document.getElementById("usdValue").textContent = "Unavailable";
     }
   }
 
