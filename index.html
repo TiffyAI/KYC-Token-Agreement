@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TiffyAI KYC + P2P + SHA256 + Console</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+  <style>
+    /* your styles here – unchanged for brevity */
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>TiffyAI Web3 KYC & Agreement</h2>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <p id="account"></p>
+
+  <div class="neon-text">
+    TiffyAI Balance:
+    <span id="balance">--</span>
+    <span id="usdValue" style="margin-left:10px;"></span>
+  </div>
+
+  <!-- your full HTML content – unchanged -->
+</div>
+
+<!-- SHA verify + console – unchanged -->
+<div class="container">
+  <h3>Verify Agreement Hash</h3>
+  <textarea id="verifyText" placeholder="Paste name|wallet|date|signature..." rows="3"></textarea>
+  <button onclick="verifyHash()">Generate & Copy SHA-256</button>
+  <p id="verifyResult" style="word-break: break-all;"></p>
+</div>
+
+<div class="container">
+  <h3>Submitted Agreements Console</h3>
+  <div id="logConsole" class="console"></div>
+</div>
+
+<!-- Load price.js normally -->
+<script src="./price.js"></script>
+
+<script>
+  const tokenAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+  const tokenABI = [
+    { constant: true, inputs: [{ name: "owner", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], type: "function" },
+    { constant: false, inputs: [{ name: "_to", type: "address" }, { name: "_value", type: "uint256" }], name: "transfer", outputs: [{ name: "", type: "bool" }], type: "function" }
+  ];
+
+  let web3;
+  let account;
+  let contract;
+  let selfieData = "";
+  const logConsole = document.getElementById("logConsole");
+
+  emailjs.init("YOUR_EMAILJS_USER_ID");
+
+  async function connectWallet() {
+    if (window.ethereum) {
+      web3 = new Web3(window.ethereum);
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await web3.eth.getAccounts();
+      account = accounts[0];
+      document.getElementById("account").innerText = "Connected: " + account;
+      document.getElementById("wallet").value = account;
+      contract = new web3.eth.Contract(tokenABI, tokenAddress);
+      updateBalance();
+    } else {
+      alert("Please install MetaMask!");
+    }
+  }
+
+  async function updateBalance() {
+    const balance = await contract.methods.balanceOf(account).call();
+    const readable = web3.utils.fromWei(balance, "ether");
+    document.getElementById("balance").innerText = readable;
+
+    // Fetch USD value
+    try {
+      if (window.getTiffyPriceUSD) {
+        const price = await window.getTiffyPriceUSD();
+        const usd = (parseFloat(readable) * price).toFixed(2);
+        document.getElementById("usdValue").innerText = `($${usd} USD)`;
+      } else {
+        document.getElementById("usdValue").innerText = "(USD unavailable)";
+      }
+    } catch (e) {
+      console.error("USD Value Error:", e);
+      document.getElementById("usdValue").innerText = "(USD unavailable)";
+    }
+  }
+
+  async function sendTokens() {
+    const to = document.getElementById("recipient").value;
+    const amount = document.getElementById("amount").value;
+    const weiAmount = web3.utils.toWei(amount, "ether");
+
+    await contract.methods.transfer(to, weiAmount).send({ from: account });
+    alert("TiffyAI Sent!");
+    updateBalance();
+  }
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      document.getElementById('video').srcObject = stream;
+    } catch (err) {
+      console.error("Camera error: ", err);
+      alert("Unable to access camera.");
+    }
+  }
+  startCamera();
+
+  function takeSelfie() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    selfieData = canvas.toDataURL('image/png');
+    alert("Selfie Captured!");
+  }
+
+  function getBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function sha256Hash(text) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function submitForm() {
+    const name = document.getElementById("name").value;
+    const wallet = document.getElementById("wallet").value;
+    const date = document.getElementById("date").value;
+    const signature = document.getElementById("signature").value;
+    const dealDescription = document.getElementById("dealDescription").value;
+    const dealAmount = document.getElementById("dealAmount").value;
+    const transactionHash = document.getElementById("transactionHash").value;
+
+    document.getElementById("txLink").innerHTML = transactionHash
+      ? `Tx Link: <a href="https://bscscan.com/tx/${transactionHash}" target="_blank" style="color:#4af0f8;">View on BscScan</a>`
+      : "";
+
+    const idFile = document.getElementById("idFile").files[0];
+    const proofFile = document.getElementById("proofFile").files[0];
+    if (!idFile || !proofFile) return alert("Please upload both documents.");
+
+    const idBase64 = await getBase64(idFile);
+    const proofBase64 = await getBase64(proofFile);
+
+    const agreementText = `${name}|${wallet}|${date}|${signature}|${dealDescription}|${dealAmount}|${transactionHash}`;
+    const agreementHash = await sha256Hash(agreementText);
+
+    const logEntry = `Agreement Hash: ${agreementHash}\nName: ${name}\nWallet: ${wallet}\nDeal: ${dealDescription}\nAmount: ${dealAmount}\nTx: ${transactionHash}\nDate: ${new Date().toLocaleString()}\n----------------------\n`;
+    logConsole.innerText = logEntry + logConsole.innerText;
+
+    emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+      name, wallet, date, signature,
+      deal_description: dealDescription,
+      deal_amount: dealAmount,
+      tx_hash: transactionHash,
+      selfie: selfieData,
+      id_file: idBase64,
+      proof_file: proofBase64,
+      hash: agreementHash
+    }).then(() => {
+      alert("Form submitted with SHA-256 hash.");
+    }, (err) => {
+      console.error(err);
+      alert("Submission failed.");
+    });
+  }
+
+  async function verifyHash() {
+    const text = document.getElementById("verifyText").value;
+    const hash = await sha256Hash(text);
+    document.getElementById("verifyResult").innerText = "SHA-256: " + hash;
+    navigator.clipboard.writeText(hash).then(() => {
+      alert("Hash copied to clipboard.");
+    });
+  }
+</script>
+</body>
+</html>
